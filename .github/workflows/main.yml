@@ -14,20 +14,10 @@ jobs:
       fail-fast: false
       matrix:
         arch:
-          - aarch64_cortex-a53
-          - aarch64_cortex-a72
-          - aarch64_cortex-a76
-          - aarch64_generic
-          - arm_cortex-a7
-          - arm_cortex-a9
-          - mips_24kc
-          - mipsel_24kc
-          - riscv64_riscv64
           - x86_64
         sdk:
-          - openwrt-24.10
-          - SNAPSHOT
-
+          - openwrt-25.12
+      
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,6 +40,7 @@ jobs:
             fi
             echo "Final feed structure:"
             ls -la feed/luci-app-kucat-config/
+      
       - name: Build packages
         uses: sirpdboy/gh-action-sdk@go1.26
         env:
@@ -64,9 +55,8 @@ jobs:
         with:
           name: ${{ matrix.arch }}-${{ matrix.sdk }}
           path: |
-            bin/packages/${{ matrix.arch }}/packages_ci/*.apk
-            bin/packages/riscv64_generic/packages_ci/*.apk
-            bin/packages/${{ matrix.arch }}/packages_ci/*.ipk
+            bin/packages/x86_64/packages_ci/*.apk
+            
       - name: Create release archive
         run: |
           if [ "${{ matrix.arch }}" = "riscv64_riscv64" ] && [ "${{ matrix.sdk }}" = "SNAPSHOT" ]; then
@@ -74,12 +64,14 @@ jobs:
           else
             tar -zcvf ${{ matrix.sdk }}-${{ matrix.arch }}.tar.gz -C bin/packages/${{ matrix.arch }}/ packages_ci
           fi
+          
       - name: Upload to release
         uses: ncipollo/release-action@v1
         with:
-          name: ${{ github.ref_name }}
+          name: ${{ github.ref_type == 'tag' && github.ref_name || 'Nightly Build' }}
+          tag: ${{ github.ref_type == 'tag' && github.ref_name || 'nightly' }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
           replacesArtifacts: true
-          prerelease: false
+          prerelease: ${{ github.ref_type != 'tag' }} # 如果不是正式 Tag，自动标记为预发布版本
           artifacts: "${{ matrix.sdk }}-${{ matrix.arch }}.tar.gz"
