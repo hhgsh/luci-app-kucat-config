@@ -1,4 +1,4 @@
-name: Build config
+name: Build Packages
 
 on:
   workflow_dispatch:
@@ -6,7 +6,6 @@ on:
     tags:
       - v*
 
-# 解决发布报错的关键：显式赋予权限
 permissions:
   contents: write
 
@@ -60,19 +59,15 @@ jobs:
           path: |
             bin/packages/x86_64/packages_ci/*.apk
 
-      # 增加动态提取版本号逻辑
+      # 解析编译出的 apk 版本号作为 Tag 命名
       - name: Set Release Tag
         id: release_tag
         run: |
-          # 提取编译生成的 luci-app-kucat-config 安装包
           FILE=$(ls bin/packages/${{ matrix.arch }}/packages_ci/luci-app-kucat-config*.apk 2>/dev/null | head -n 1)
-          
           if [ -n "$FILE" ]; then
-            # 解析出版本号（移除名前缀和后缀等）
             VERSION=$(basename "$FILE" | sed -E 's/^luci-app-kucat-config[_-]//; s/\.apk$//; s/_[^_]+$//')
             echo "tag_name=v${VERSION}" >> $GITHUB_OUTPUT
           else
-            # 未找到包时的备选 Tag 格式
             echo "tag_name=v1.0.0-$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
           fi
 
